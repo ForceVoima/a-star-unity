@@ -13,5 +13,13 @@ public class Node
         m_vPosition = vPos;
     }
 
+    public Vector3 GetPosition()
+    {
+        return m_vPosition;
+    }
 
+    public bool IsBlocked()
+    {
+        return m_isBlocked;
+    }
 }
