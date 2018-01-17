@@ -5,6 +5,7 @@ using UnityEngine;
 public class PathGridManager : MonoBehaviour
 {
     public LayerMask m_ObstacleMask;
+    public LayerMask m_CapsuleMask;
     public Vector2 m_vGridSize;
     public float m_fHalfNodeWidth = 0.5f;
 
@@ -13,9 +14,11 @@ public class PathGridManager : MonoBehaviour
 
     Node[,] m_aGrid;
 
+    public GameObject capsule;
+
     private void OnDrawGizmos()
     {
-        Vector3 cube = new Vector3(2f * m_fHalfNodeWidth, 1.0f, 2f * m_fHalfNodeWidth);
+        Vector3 cube = new Vector3(1.9f * m_fHalfNodeWidth, 1.0f, 1.9f * m_fHalfNodeWidth);
 
         if (m_aGrid != null && m_aGrid.Length > 0)
         {
@@ -23,7 +26,9 @@ public class PathGridManager : MonoBehaviour
             {
                 for (int z = 0; z < m_aGrid.GetLength(1); z++)
                 {
-                    if (m_aGrid[x, z].IsBlocked())
+                    if (m_aGrid[x, z].IsOverlapping())
+                        Gizmos.color = Color.blue;
+                    else if (m_aGrid[x, z].IsBlocked())
                         Gizmos.color = Color.red;
                     else
                         Gizmos.color = Color.white;
@@ -37,12 +42,19 @@ public class PathGridManager : MonoBehaviour
     private void Start()
     {
         PopulateGrid();
+
+        FindCapsule();
+    }
+
+    private void Update()
+    {
+        FindCapsule();
     }
 
     private void PopulateGrid()
     {
-        int length = (int)(GRID_LENGTH / m_vGridSize.x);
-        int width = (int)(GRID_WIDTH / m_vGridSize.y);
+        int width = (int)(GRID_WIDTH / m_vGridSize.x);
+        int length = (int)(GRID_LENGTH / m_vGridSize.y);
 
         Debug.Log("Length: " + length + " | Width: " + width);
 
@@ -62,13 +74,41 @@ public class PathGridManager : MonoBehaviour
             {
                 blocked = Physics.CheckSphere(position, m_fHalfNodeWidth, m_ObstacleMask);
                 m_aGrid[x, z] = new Node(blocked, position);
-
-                Debug.Log("X position: " + position.x + " | Z position: " + position.z + " | blocked: " + blocked);
-
                 position += Vector3.forward * 2f * m_fHalfNodeWidth;
             }
 
             position += Vector3.right * 2f * m_fHalfNodeWidth;
+        }
+    }
+
+    private void FindCapsule()
+    {
+        float sensitivity = m_fHalfNodeWidth;
+        bool triggered = false;
+
+        if (m_aGrid != null && m_aGrid.Length > 0)
+        {
+            for (int x = 0; x < m_aGrid.GetLength(0); x++)
+            {
+                for (int z = 0; z < m_aGrid.GetLength(1); z++)
+                {
+                    if (
+                        !triggered &&
+                        capsule.transform.position.x <= m_aGrid[x, z].GetPosition().x + sensitivity &&
+                        capsule.transform.position.x >= m_aGrid[x, z].GetPosition().x - sensitivity &&
+                        capsule.transform.position.z <= m_aGrid[x, z].GetPosition().z + sensitivity &&
+                        capsule.transform.position.z >= m_aGrid[x, z].GetPosition().z - sensitivity
+                        )
+                    {
+                        m_aGrid[x, z].SetOverlap(true);
+                        triggered = true;
+                    }
+                    else
+                    {
+                        m_aGrid[x, z].SetOverlap(false);
+                    }
+                }
+            }
         }
     }
 }
