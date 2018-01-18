@@ -1,25 +1,25 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 public class PathGridManager : MonoBehaviour
 {
     public LayerMask m_ObstacleMask;
     public LayerMask m_CapsuleMask;
-    public Vector2 m_vGridSize;
+
+    public Vector2 m_vGridSize = new Vector2(10.0f, 10.0f);
     public float m_fHalfNodeWidth = 0.5f;
 
-    public const float GRID_WIDTH = 10.0f;
-    public const float GRID_LENGTH = 10.0f;
-
-    Node[,] m_aGrid;
+    private Node[,] m_aGrid;
 
     public GameObject capsule;
+    private int[] lastCapsuleNode;
+
+    public bool repopulate = false;
 
     private void OnDrawGizmos()
     {
-        Vector3 cube = new Vector3(1.9f * m_fHalfNodeWidth, 1.0f, 1.9f * m_fHalfNodeWidth);
+        Vector3 cube = new Vector3(1.9f * m_fHalfNodeWidth, 1.0f, 1.8f * m_fHalfNodeWidth);
 
+        // Sanity check not to draw non-existent Nodes
         if (m_aGrid != null && m_aGrid.Length > 0)
         {
             for (int x = 0; x < m_aGrid.GetLength(0); x++)
@@ -43,34 +43,51 @@ public class PathGridManager : MonoBehaviour
     {
         PopulateGrid();
 
-        FindCapsule();
+        lastCapsuleNode = FindObject(capsule.transform.position);
+        m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
     }
 
     private void Update()
     {
-        FindCapsule();
+        if (CapsuleInNode(capsule.transform.position, m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]]))
+        {
+            return;
+        }
+        else
+        {
+            m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(false);
+            lastCapsuleNode = FindObject(capsule.transform.position);
+            m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
+        }
+
+        if (repopulate)
+        {
+            repopulate = false;
+            PopulateGrid();
+        }
     }
 
     private void PopulateGrid()
     {
-        int width = (int)(GRID_WIDTH / m_vGridSize.x);
-        int length = (int)(GRID_LENGTH / m_vGridSize.y);
+        int width = (int)(m_vGridSize.x / (m_fHalfNodeWidth * 2f));
+        int length = (int)(m_vGridSize.y / (m_fHalfNodeWidth * 2f));
 
         Debug.Log("Length: " + length + " | Width: " + width);
+        Debug.Log("Press F5 to repopulate!");
 
-        m_aGrid = new Node[length, width];
+        m_aGrid = new Node[width, length];
 
         Vector3 position = transform.position +
-            (GRID_LENGTH / 2f - m_fHalfNodeWidth) * Vector3.left +
-            (GRID_WIDTH / 2f - m_fHalfNodeWidth) * Vector3.back;
+            (m_vGridSize.x / 2f - m_fHalfNodeWidth) * Vector3.left +
+            (m_vGridSize.y / 2f - m_fHalfNodeWidth) * Vector3.back;
 
         bool blocked;
 
-        for (int x = 0; x < length; x++)
+        for (int x = 0; x < width; x++)
         {
-            position.z = (GRID_WIDTH / 2f - m_fHalfNodeWidth) * -1f;
+            position.z = (m_vGridSize.y / 2f - m_fHalfNodeWidth) * -1f;
 
-            for (int z = 0; z < width; z++)
+            for (int z = 0; z < length; z++)
             {
                 blocked = Physics.CheckSphere(position, m_fHalfNodeWidth, m_ObstacleMask);
                 m_aGrid[x, z] = new Node(blocked, position);
@@ -81,10 +98,28 @@ public class PathGridManager : MonoBehaviour
         }
     }
 
-    private void FindCapsule()
+    private bool CapsuleInNode(Vector3 position, Node node)
     {
         float sensitivity = m_fHalfNodeWidth;
-        bool triggered = false;
+
+        if (
+            position.x <= node.GetPosition().x + sensitivity &&
+            position.x >= node.GetPosition().x - sensitivity &&
+            position.z <= node.GetPosition().z + sensitivity &&
+            position.z >= node.GetPosition().z - sensitivity
+            )
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    private int[] FindObject(Vector3 position)
+    {
+        int[] result = new int[2];
 
         if (m_aGrid != null && m_aGrid.Length > 0)
         {
@@ -92,23 +127,17 @@ public class PathGridManager : MonoBehaviour
             {
                 for (int z = 0; z < m_aGrid.GetLength(1); z++)
                 {
-                    if (
-                        !triggered &&
-                        capsule.transform.position.x <= m_aGrid[x, z].GetPosition().x + sensitivity &&
-                        capsule.transform.position.x >= m_aGrid[x, z].GetPosition().x - sensitivity &&
-                        capsule.transform.position.z <= m_aGrid[x, z].GetPosition().z + sensitivity &&
-                        capsule.transform.position.z >= m_aGrid[x, z].GetPosition().z - sensitivity
-                        )
+                    if (CapsuleInNode(position, m_aGrid[x,z]))
                     {
-                        m_aGrid[x, z].SetOverlap(true);
-                        triggered = true;
-                    }
-                    else
-                    {
-                        m_aGrid[x, z].SetOverlap(false);
+                        result[0] = x;
+                        result[1] = z;
+                        return result;
                     }
                 }
             }
         }
+
+        Debug.LogError("Object not found!");
+        return result;
     }
 }
