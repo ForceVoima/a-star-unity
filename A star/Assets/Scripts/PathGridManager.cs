@@ -16,6 +16,8 @@ public class PathGridManager : MonoBehaviour
     private int[] lastCapsuleNode;
 
     private bool complained = false;
+    private int width;
+    private int length;
 
     private void OnDrawGizmos()
     {
@@ -39,25 +41,16 @@ public class PathGridManager : MonoBehaviour
         }
     }
 
-    private void Start()
-    {
-        PopulateGrid();
-
-        lastCapsuleNode = FindObject(capsule.transform.position);
-        m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
-    }
-
     private void OnValidate()
     {
         if (m_fHalfNodeWidth < 0f)
             m_fHalfNodeWidth *= -1f;
 
         PopulateGrid();
-        lastCapsuleNode = new int[2] { 0, 0 };
 
         cube = new Vector3(1.9f * m_fHalfNodeWidth, 1.0f, 1.8f * m_fHalfNodeWidth);
 
-        if (m_aGrid != null)
+        if (width > 0 && length > 0)
         {
             lastCapsuleNode = FindObject(capsule.transform.position);
             m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
@@ -91,16 +84,14 @@ public class PathGridManager : MonoBehaviour
             return;
         }
 
-        int width = (int)((m_vGridSize.x + 0.000001f) / (m_fHalfNodeWidth * 2f));
-        int length = (int)((m_vGridSize.y + 0.000001f) / (m_fHalfNodeWidth * 2f));
+        width = (int)((m_vGridSize.x + 0.000001f) / (m_fHalfNodeWidth * 2f));
+        length = (int)((m_vGridSize.y + 0.000001f) / (m_fHalfNodeWidth * 2f));
 
         if (width < 1 || length < 1)
         {
             m_aGrid = null;
             return;
         }
-
-        Debug.Log("Length: " + length + " | Width: " + width);
 
         m_aGrid = new Node[width, length];
 
@@ -123,16 +114,36 @@ public class PathGridManager : MonoBehaviour
         }
     }
 
+    private int[] FindObject(Vector3 position)
+    {
+        float leftMostX = transform.position.x + (1 - width) * m_fHalfNodeWidth;
+        float deltaX = position.x - leftMostX;
+        int indexX = Mathf.RoundToInt(deltaX / (2f * m_fHalfNodeWidth));
+
+        float bottomZ = transform.position.z + (1 - length) * m_fHalfNodeWidth;
+        float deltaZ = position.z - bottomZ;
+        int indexZ = Mathf.RoundToInt(deltaZ / (2f * m_fHalfNodeWidth));
+
+        if (indexX >= width)
+            indexX = width - 1;
+        else if (indexX < 0)
+            indexX = 0;
+
+        if (indexZ >= length)
+            indexZ = length - 1;
+        else if (indexZ < 0)
+            indexZ = 0;
+
+        return new int[2] { indexX, indexZ };
+    }
+
     private bool CapsuleInNode(Vector3 position, Node node)
     {
         float sensitivity = m_fHalfNodeWidth + 0.00001f;
+        Vector3 nodePosition = node.GetPosition();
 
-        if (
-            position.x <= node.GetPosition().x + sensitivity &&
-            position.x >= node.GetPosition().x - sensitivity &&
-            position.z <= node.GetPosition().z + sensitivity &&
-            position.z >= node.GetPosition().z - sensitivity
-            )
+        if (Mathf.Abs(nodePosition.x - position.x) < sensitivity &&
+            Mathf.Abs(nodePosition.z - position.z) < sensitivity)
         {
             return true;
         }
@@ -142,7 +153,8 @@ public class PathGridManager : MonoBehaviour
         }
     }
 
-    private int[] FindObject(Vector3 position)
+    // Less efficient old way of picking the correct node
+    private int[] FindObject2(Vector3 position)
     {
         int[] result = new int[2];
 
