@@ -8,17 +8,17 @@ public class PathGridManager : MonoBehaviour
     public Vector2 m_vGridSize = new Vector2(10.0f, 10.0f);
     public float m_fHalfNodeWidth = 0.5f;
 
+    private Vector3 cube;
+
     private Node[,] m_aGrid;
 
     public GameObject capsule;
     private int[] lastCapsuleNode;
 
-    public bool repopulate = false;
+    private bool complained = false;
 
     private void OnDrawGizmos()
     {
-        Vector3 cube = new Vector3(1.9f * m_fHalfNodeWidth, 1.0f, 1.8f * m_fHalfNodeWidth);
-
         // Sanity check not to draw non-existent Nodes
         if (m_aGrid != null && m_aGrid.Length > 0)
         {
@@ -47,8 +47,30 @@ public class PathGridManager : MonoBehaviour
         m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
     }
 
+    private void OnValidate()
+    {
+        if (m_fHalfNodeWidth < 0f)
+            m_fHalfNodeWidth *= -1f;
+
+        PopulateGrid();
+        lastCapsuleNode = new int[2] { 0, 0 };
+
+        cube = new Vector3(1.9f * m_fHalfNodeWidth, 1.0f, 1.8f * m_fHalfNodeWidth);
+
+        if (m_aGrid != null)
+        {
+            lastCapsuleNode = FindObject(capsule.transform.position);
+            m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
+        }
+    }
+
     private void Update()
     {
+        if (m_aGrid == null ||
+            m_aGrid.GetLength(0) == 0 ||
+            m_aGrid.GetLength(1) == 0)
+            return;
+
         if (CapsuleInNode(capsule.transform.position, m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]]))
         {
             return;
@@ -59,48 +81,51 @@ public class PathGridManager : MonoBehaviour
             lastCapsuleNode = FindObject(capsule.transform.position);
             m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
         }
-
-        if (repopulate)
-        {
-            repopulate = false;
-            PopulateGrid();
-        }
     }
 
     private void PopulateGrid()
     {
-        int width = (int)(m_vGridSize.x / (m_fHalfNodeWidth * 2f));
-        int length = (int)(m_vGridSize.y / (m_fHalfNodeWidth * 2f));
+        if (m_fHalfNodeWidth <= 0.00001f)
+        {
+            Debug.LogError("Division by zero!");
+            return;
+        }
+
+        int width = (int)((m_vGridSize.x + 0.000001f) / (m_fHalfNodeWidth * 2f));
+        int length = (int)((m_vGridSize.y + 0.000001f) / (m_fHalfNodeWidth * 2f));
+
+        if (width < 1 || length < 1)
+        {
+            m_aGrid = null;
+            return;
+        }
 
         Debug.Log("Length: " + length + " | Width: " + width);
-        Debug.Log("Press F5 to repopulate!");
 
         m_aGrid = new Node[width, length];
 
         Vector3 position = transform.position +
-            (m_vGridSize.x / 2f - m_fHalfNodeWidth) * Vector3.left +
-            (m_vGridSize.y / 2f - m_fHalfNodeWidth) * Vector3.back;
+            (width * m_fHalfNodeWidth - m_fHalfNodeWidth) * Vector3.left +
+            (length * m_fHalfNodeWidth - m_fHalfNodeWidth) * Vector3.back;
 
         bool blocked;
 
         for (int x = 0; x < width; x++)
         {
-            position.z = (m_vGridSize.y / 2f - m_fHalfNodeWidth) * -1f;
+            position.x = transform.position.x + (2 * x + 1 - width) * m_fHalfNodeWidth;
 
             for (int z = 0; z < length; z++)
             {
+                position.z = transform.position.z + (2 * z + 1 - length) * m_fHalfNodeWidth;
                 blocked = Physics.CheckSphere(position, m_fHalfNodeWidth, m_ObstacleMask);
                 m_aGrid[x, z] = new Node(blocked, position);
-                position += Vector3.forward * 2f * m_fHalfNodeWidth;
             }
-
-            position += Vector3.right * 2f * m_fHalfNodeWidth;
         }
     }
 
     private bool CapsuleInNode(Vector3 position, Node node)
     {
-        float sensitivity = m_fHalfNodeWidth;
+        float sensitivity = m_fHalfNodeWidth + 0.00001f;
 
         if (
             position.x <= node.GetPosition().x + sensitivity &&
@@ -131,13 +156,18 @@ public class PathGridManager : MonoBehaviour
                     {
                         result[0] = x;
                         result[1] = z;
+                        complained = false;
                         return result;
                     }
                 }
             }
         }
 
-        Debug.LogError("Object not found!");
+        if (!complained)
+        {
+            complained = true;
+            Debug.LogError(Time.fixedTime + "Object not found!");
+        }
         return result;
     }
 }
