@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System.Collections.Generic;
 
 public class PathGridManager : MonoBehaviour
 {
@@ -14,10 +15,13 @@ public class PathGridManager : MonoBehaviour
 
     public GameObject capsule;
     private int[] lastCapsuleNode;
-
-    private bool complained = false;
+    
     private int width;
     private int length;
+
+    public bool stop = false;
+
+    private List<Node> testList;
 
     private void OnDrawGizmos()
     {
@@ -57,8 +61,66 @@ public class PathGridManager : MonoBehaviour
         }
     }
 
+    public void ShowPath(List<Node> path)
+    {
+        if (testList != null)
+        {
+            // Clear earlier colourings:
+            foreach (Node item in testList)
+            {
+                item.SetOverlap(false);
+            }
+        }
+        
+
+        m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(false);
+
+        stop = true;
+
+        foreach (Node item in path)
+        {
+            m_aGrid[item.m_iGridX, item.m_iGridY].SetOverlap(true);
+        }
+
+        // Store this path:
+        testList = path;
+    }
+
+    /*
     private void Update()
     {
+        if (stop && Input.GetKeyDown(KeyCode.F4))
+        {
+            foreach (Node item in testList)
+            {
+                item.SetOverlap(false);
+            }
+
+            stop = false;
+
+            lastCapsuleNode = FindObject(capsule.transform.position);
+            m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
+        }
+
+        if (Input.GetKeyDown(KeyCode.F5))
+        {
+            m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(false);
+
+            testList = GetNeighbours(m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]]);
+
+            foreach (Node item in testList)
+            {
+                item.SetOverlap(true);
+            }
+
+            stop = true;
+        }
+
+        if (stop)
+        {
+            return;
+        }
+
         if (m_aGrid == null ||
             m_aGrid.GetLength(0) == 0 ||
             m_aGrid.GetLength(1) == 0)
@@ -75,6 +137,7 @@ public class PathGridManager : MonoBehaviour
             m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
         }
     }
+    */
 
     private void PopulateGrid()
     {
@@ -109,9 +172,15 @@ public class PathGridManager : MonoBehaviour
             {
                 position.z = transform.position.z + (2 * z + 1 - length) * m_fHalfNodeWidth;
                 blocked = Physics.CheckSphere(position, m_fHalfNodeWidth, m_ObstacleMask);
-                m_aGrid[x, z] = new Node(blocked, position);
+                m_aGrid[x, z] = new Node(bIsBlocked: blocked, vPos: position, x: x, y: z);
             }
         }
+    }
+
+    public Node NodeFromWorldPos(Vector3 position)
+    {
+        int[] indexes = FindObject(position);
+        return m_aGrid[indexes[0], indexes[1]];
     }
 
     private int[] FindObject(Vector3 position)
@@ -153,33 +222,35 @@ public class PathGridManager : MonoBehaviour
         }
     }
 
-    // Less efficient old way of picking the correct node
-    private int[] FindObject2(Vector3 position)
+    public List<Node> GetNeighbours(Node node)
     {
-        int[] result = new int[2];
+        List<Node> result = new List<Node>();
 
-        if (m_aGrid != null && m_aGrid.Length > 0)
+        int x = node.m_iGridX;
+        int y = node.m_iGridY;
+
+        for (int i = -1; i <= 1; i++)
         {
-            for (int x = 0; x < m_aGrid.GetLength(0); x++)
+            if (x + i < 0 || x + i >= width)
             {
-                for (int z = 0; z < m_aGrid.GetLength(1); z++)
+                continue;
+            }
+
+            for (int j = -1; j <= 1; j++)
+            {
+                if (y + j < 0 || y + j >= length || (i == 0 && j == 0))
                 {
-                    if (CapsuleInNode(position, m_aGrid[x,z]))
-                    {
-                        result[0] = x;
-                        result[1] = z;
-                        complained = false;
-                        return result;
-                    }
+                    continue;
                 }
+
+                // Don't worry about blocked right now
+                //if (m_aGrid[(x+i),(y+j)].m_isBlocked == false)
+                
+                result.Add(m_aGrid[(x + i), (y + j)]);
             }
         }
 
-        if (!complained)
-        {
-            complained = true;
-            Debug.LogError(Time.fixedTime + "Object not found!");
-        }
+        Debug.Log("Found " + result.Count + " results!");
         return result;
     }
 }
