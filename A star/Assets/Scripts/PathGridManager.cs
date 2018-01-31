@@ -250,7 +250,7 @@ public class PathGridManager : MonoBehaviour
             }
         }
 
-        Debug.Log("Found " + result.Count + " results!");
+        // Debug.Log("Found " + result.Count + " results!");
         return result;
     }
 }

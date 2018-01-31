@@ -118,8 +118,8 @@ public class A_Star : MonoBehaviour
 
         for (int i = 1; i < openSet.Count; i++)
         {
-            if ((openSet[i].m_iFCost < currentNode.m_iFCost) ||
-                  openSet[i].m_iFCost == currentNode.m_iFCost && openSet[i].m_iHCost < currentNode.m_iHCost)
+            if ((openSet[i].m_ifCost < currentNode.m_ifCost) ||
+                  openSet[i].m_ifCost == currentNode.m_ifCost && openSet[i].m_iHCost < currentNode.m_iHCost)
             {
                 currentNode = openSet[i];
             }

@@ -746,7 +746,7 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 512
   m_vGridSize: {x: 10, y: 10}
-  m_fHalfNodeWidth: 0.25
+  m_fHalfNodeWidth: 0.1
   capsule: {fileID: 184990888}
   stop: 0
 --- !u!114 &950911396
