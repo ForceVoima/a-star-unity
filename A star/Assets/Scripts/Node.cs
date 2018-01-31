@@ -17,6 +17,8 @@ public class Node : IHeapItem<Node>
 
     int m_iHeapIndex;
 
+    List<Node> neigbours;
+
     public int CompareTo(Node node)
     {
         int iComp = m_ifCost.CompareTo(node.m_ifCost);
@@ -54,6 +56,16 @@ public class Node : IHeapItem<Node>
 
         m_iGridX = x;
         m_iGridY = y;
+    }
+
+    public void BakeNeigbours(List<Node> neighbourList)
+    {
+        neigbours = neighbourList;
+    }
+
+    public List<Node> GetNeigbours()
+    {
+        return neigbours;
     }
 
     public Vector3 GetPosition()

@@ -38,8 +38,8 @@ public class A_Star : MonoBehaviour
         Node startNode = m_Grid.NodeFromWorldPos(start);
         Node endNode = m_Grid.NodeFromWorldPos(end);
 
-        List<Node> openSet = new List<Node>();
-        List<Node> closedSet = new List<Node>();
+        Heap<Node> openSet = new Heap<Node>(m_Grid.length * m_Grid.width);
+        Heap<Node> closedSet = new Heap<Node>(m_Grid.length * m_Grid.width);
 
         // G-cost = distance from the starting node:
         startNode.m_iGCost = GetDistance(startNode, startNode);
@@ -54,8 +54,8 @@ public class A_Star : MonoBehaviour
 
         while (openSet.Count > 0)
         {
-            currentNode = LowestFCost(openSet);
-            openSet.Remove(currentNode);
+            currentNode = openSet.RemoveFirst();
+
             closedSet.Add(currentNode);
 
             // Are we there yet?
@@ -65,7 +65,8 @@ public class A_Star : MonoBehaviour
                 return;
             }
 
-            neighbours = m_Grid.GetNeighbours(currentNode);
+            //neighbours = m_Grid.GetNeighbours(currentNode);
+            neighbours = currentNode.GetNeigbours();
 
             foreach (Node neighbour in neighbours)
             {
@@ -87,6 +88,10 @@ public class A_Star : MonoBehaviour
                     if (!openSet.Contains(neighbour))
                     {
                         openSet.Add(neighbour);
+                    }
+                    else
+                    {
+                        // openSet.UpdateItem(neighbour);
                     }
                 }
             }

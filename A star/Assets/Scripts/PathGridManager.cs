@@ -16,8 +16,8 @@ public class PathGridManager : MonoBehaviour
     public GameObject capsule;
     private int[] lastCapsuleNode;
     
-    private int width;
-    private int length;
+    public int width;
+    public int length;
 
     public bool stop = false;
 
@@ -52,12 +52,36 @@ public class PathGridManager : MonoBehaviour
 
         PopulateGrid();
 
+        if (m_aGrid == null)
+            return;
+
         cube = new Vector3(1.9f * m_fHalfNodeWidth, 1.0f, 1.8f * m_fHalfNodeWidth);
 
         if (width > 0 && length > 0)
         {
             lastCapsuleNode = FindObject(capsule.transform.position);
             m_aGrid[lastCapsuleNode[0], lastCapsuleNode[1]].SetOverlap(true);
+        }
+
+        BakeNeigbours();
+        /*
+        foreach (Node node in m_aGrid)
+        {
+            node.BakeNeigbours(node.GetNeigbours());
+        }
+        */
+    }
+
+    private void BakeNeigbours()
+    {
+        Debug.Log("Bake neigbours!");
+
+        for (int x = 0; x < m_aGrid.GetLength(0); x++)
+        {
+            for (int z = 0; z < m_aGrid.GetLength(1); z++)
+            {
+                m_aGrid[x, z].BakeNeigbours(GetNeighbours(m_aGrid[x, z]));
+            }
         }
     }
 
@@ -144,6 +168,7 @@ public class PathGridManager : MonoBehaviour
         if (m_fHalfNodeWidth <= 0.00001f)
         {
             Debug.LogError("Division by zero!");
+            m_aGrid = null;
             return;
         }
 
